@@ -5,7 +5,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/projectatomic/skopeo/docker/utils"
+	"github.com/projectatomic/skopeo/manifest"
 	"github.com/projectatomic/skopeo/signature"
 )
 
@@ -57,12 +57,12 @@ func copyHandler(context *cli.Context) {
 
 	//if OCI image destination, then ask for v2s2 manifest for config
 
-	manifest, _, err := src.GetManifest([]string{utils.DockerV2Schema1MIMEType})
+	m, _, err := src.GetManifest([]string{manifest.DockerV2Schema1MIMEType})
 	if err != nil {
 		logrus.Fatalf("Error reading manifest: %s", err.Error())
 	}
 
-	layers, err := manifestLayers(manifest)
+	layers, err := manifestLayers(m)
 	if err != nil {
 		logrus.Fatalf("Error parsing manifest: %s", err.Error())
 	}
@@ -93,7 +93,7 @@ func copyHandler(context *cli.Context) {
 			logrus.Fatalf("Error determining canonical Docker reference: %s", err.Error())
 		}
 
-		newSig, err := signature.SignDockerManifest(manifest, dockerReference, mech, signBy)
+		newSig, err := signature.SignDockerManifest(m, dockerReference, mech, signBy)
 		if err != nil {
 			logrus.Fatalf("Error creating signature: %s", err.Error())
 		}
@@ -105,7 +105,7 @@ func copyHandler(context *cli.Context) {
 	}
 
 	// FIXME: We need to call PutManifest after PutBlob and PutSignatures. This seems ugly; move to a "set properties" + "commit" model?
-	if err := dest.PutManifest(manifest); err != nil {
+	if err := dest.PutManifest(m); err != nil {
 		logrus.Fatalf("Error writing manifest: %s", err.Error())
 	}
 }

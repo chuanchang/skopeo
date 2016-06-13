@@ -8,7 +8,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/projectatomic/skopeo/docker"
-	"github.com/projectatomic/skopeo/docker/utils"
+	"github.com/projectatomic/skopeo/manifest"
 )
 
 // inspectOutput is the output format of (skopeo inspect), primarily so that we can format it with a simple json.MarshalIndent.
@@ -63,7 +63,7 @@ var inspectCmd = cli.Command{
 			Os:            imgInspect.Os,
 			Layers:        imgInspect.Layers,
 		}
-		outputData.Digest, err = utils.ManifestDigest(rawManifest)
+		outputData.Digest, err = manifest.Digest(rawManifest)
 		if err != nil {
 			logrus.Fatalf("Error computing manifest digest: %s", err.Error())
 		}
