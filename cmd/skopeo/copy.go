@@ -9,18 +9,38 @@ import (
 	"github.com/projectatomic/skopeo/signature"
 )
 
-// FIXME: Also handle schema2, and put this elsewhere:
+// FIXME(runcom): put this elsewhere:
 // docker.go contains similar code, more sophisticated
 // (at the very least the deduplication should be reused from there).
 func manifestLayers(manifest []byte) ([]string, error) {
-	man := manifestSchema1{}
-	if err := json.Unmarshal(manifest, &man); err != nil {
-		return nil, err
-	}
-
+	mt := mutils.GuessMIMEType(manifest)
 	layers := []string{}
-	for _, layer := range man.FSLayers {
-		layers = append(layers, layer.BlobSum)
+	switch mt {
+	case mutils.DockerV2Schema1MIMEType:
+		man := manifestSchema1{}
+		if err := json.Unmarshal(manifest, &man); err != nil {
+			return nil, err
+		}
+		for _, layer := range man.FSLayers {
+			layers = append(layers, layer.BlobSum)
+		}
+	case mutils.DockerV2Schema2MIMEType:
+		// TODO(runcom): move to its own type!
+		v2s2 := struct {
+			Config struct {
+				Digest string
+			}
+			Layers []struct {
+				// TODO(runcom): handle MediaType also for external URLs
+				Digest string `json:"digest"`
+			} `json:"layers"`
+		}{}
+		if err := json.Unmarshal(manifest, &v2s2); err != nil {
+			return nil, err
+		}
+		for _, layer := range v2s2.Layers {
+			layers = append(layers, layer.Digest)
+		}
 	}
 	return layers, nil
 }
