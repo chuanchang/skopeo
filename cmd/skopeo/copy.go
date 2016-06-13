@@ -55,6 +55,8 @@ func copyHandler(context *cli.Context) {
 	}
 	signBy := context.String("sign-by")
 
+	//if OCI image destination, then ask for v2s2 manifest for config
+
 	manifest, _, err := src.GetManifest([]string{utils.DockerV2Schema1MIMEType})
 	if err != nil {
 		logrus.Fatalf("Error reading manifest: %s", err.Error())
