@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -12,37 +13,43 @@ import (
 // FIXME(runcom): put this elsewhere:
 // docker.go contains similar code, more sophisticated
 // (at the very least the deduplication should be reused from there).
-func manifestLayers(manifest []byte) ([]string, error) {
-	mt := mutils.GuessMIMEType(manifest)
-	layers := []string{}
+func manifestBlobs(m []byte) ([]string, error) {
+	mt := manifest.GuessMIMEType(m)
+	blobs := []string{}
 	switch mt {
-	case mutils.DockerV2Schema1MIMEType:
+	case manifest.DockerV2Schema1MIMEType:
 		man := manifestSchema1{}
-		if err := json.Unmarshal(manifest, &man); err != nil {
+		if err := json.Unmarshal(m, &man); err != nil {
 			return nil, err
 		}
 		for _, layer := range man.FSLayers {
-			layers = append(layers, layer.BlobSum)
+			blobs = append(blobs, layer.BlobSum)
 		}
-	case mutils.DockerV2Schema2MIMEType:
-		// TODO(runcom): move to its own type!
-		v2s2 := struct {
-			Config struct {
-				Digest string
-			}
-			Layers []struct {
-				// TODO(runcom): handle MediaType also for external URLs
-				Digest string `json:"digest"`
-			} `json:"layers"`
-		}{}
-		if err := json.Unmarshal(manifest, &v2s2); err != nil {
+	case manifest.DockerV2Schema2MIMEType:
+		v2s2 := manifestSchema2{}
+		if err := json.Unmarshal(m, &v2s2); err != nil {
 			return nil, err
 		}
 		for _, layer := range v2s2.Layers {
-			layers = append(layers, layer.Digest)
+			blobs = append(blobs, layer.Digest)
 		}
+		blobs = append(blobs, v2s2.Config.Digest)
 	}
-	return layers, nil
+	return blobs, nil
+}
+
+// FIXME: this is a copy from oci/oci.go and does not belong here.
+type manifestSchema2 struct {
+	Config struct {
+		MediaType string `json:"mediaType"`
+		Size      int64  `json:"size"`
+		Digest    string `json:"digest"`
+	} `json:"config"`
+	Layers []struct {
+		MediaType string `json:"mediaType"`
+		Size      int64  `json:"size"`
+		Digest    string `json:"digest"`
+	} `json:"layers"`
 }
 
 // FIXME: this is a copy from docker_image.go and does not belong here.
@@ -75,14 +82,19 @@ func copyHandler(context *cli.Context) {
 	}
 	signBy := context.String("sign-by")
 
-	//if OCI image destination, then ask for v2s2 manifest for config
+	mimeTypes := []string{manifest.DockerV2Schema2MIMEType}
+	// if OCI image destination, then ask for v2s2 manifest for config
+	// this is ugly I know, we'll refactor
+	if !strings.HasPrefix(context.Args()[1], ociPrefix) {
+		//mimeTypes = append(mimeTypes, manifest.DockerV2Schema1MIMEType)
+	}
 
-	m, _, err := src.GetManifest([]string{manifest.DockerV2Schema1MIMEType})
+	m, _, err := src.GetManifest(mimeTypes)
 	if err != nil {
 		logrus.Fatalf("Error reading manifest: %s", err.Error())
 	}
 
-	layers, err := manifestLayers(m)
+	layers, err := manifestBlobs(m)
 	if err != nil {
 		logrus.Fatalf("Error parsing manifest: %s", err.Error())
 	}
