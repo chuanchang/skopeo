@@ -45,7 +45,7 @@ func GuessMIMEType(manifest []byte) string {
 	}
 
 	switch meta.MediaType {
-	case DockerV2Schema2MIMEType, DockerV2ListMIMEType, OCIV1DescriptorMIMEType, OCIV1ImageManifestMIMEType, OCIV1ImageManifestListMIMEType, OCIV1ImageSerializationRootfsTarGzipMIMEType, OCIV1ImageSerializationConfigMIMEType: // A recognized type.
+	case DockerV2Schema2MIMEType, DockerV2ListMIMEType, OCIV1ImageManifestMIMEType, OCIV1ImageManifestListMIMEType: // A recognized type.
 		return meta.MediaType
 	}
 	switch meta.SchemaVersion {

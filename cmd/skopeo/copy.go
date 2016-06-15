@@ -83,10 +83,11 @@ func copyHandler(context *cli.Context) {
 	signBy := context.String("sign-by")
 
 	mimeTypes := []string{manifest.DockerV2Schema2MIMEType}
-	// if OCI image destination, then ask for v2s2 manifest for config
+	// TODO(runcom, mitr): will refactor in followup where copy becomes a library
+	// if not OCI image destination, then ask for v2s1 manifest as well for config
 	// this is ugly I know, we'll refactor
 	if !strings.HasPrefix(context.Args()[1], ociPrefix) {
-		//mimeTypes = append(mimeTypes, manifest.DockerV2Schema1MIMEType)
+		mimeTypes = append(mimeTypes, manifest.DockerV2Schema1MIMEType)
 	}
 
 	m, _, err := src.GetManifest(mimeTypes)
